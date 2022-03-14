@@ -1,12 +1,15 @@
 # Databricks notebook source
 # MAGIC %md # Training machine learning models on tabular data: an end-to-end example
 # MAGIC 
-# MAGIC This tutorial covers the following steps:
+# MAGIC ## ![Spark Logo Tiny](https://files.training.databricks.com/images/105/logo_spark_tiny.png) In this lesson you will:<br>
 # MAGIC - Explore the results of the hyperparameter sweep with MLflow
 # MAGIC - Register the best performing model in MLflow
 # MAGIC - Apply the registered model to another dataset using a Spark UDF
 # MAGIC - Set up model serving for low-latency requests
-# MAGIC 
+
+# COMMAND ----------
+
+# MAGIC %md 
 # MAGIC In this example, you build a model to predict the quality of Portugese "Vinho Verde" wine based on the wine's physicochemical properties. 
 # MAGIC 
 # MAGIC The example uses a dataset from the UCI Machine Learning Repository, presented in [*Modeling wine preferences by data mining from physicochemical properties*](https://www.sciencedirect.com/science/article/pii/S0167923609001377?via%3Dihub) [Cortez et al., 2009].
@@ -19,6 +22,13 @@
 
 # This command is only required if you are using a cluster running DBR 7.3 LTS ML or below. 
 #%pip install --upgrade cloudpickle
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## ![Spark Logo Tiny](https://files.training.databricks.com/images/105/logo_spark_tiny.png) Classroom-Setup
+# MAGIC 
+# MAGIC For each lesson to execute correctly, please make sure to run the **`configuration`** cell at the start of each lesson.
 
 # COMMAND ----------
 
@@ -326,6 +336,14 @@ pd.DataFrame({
 # MAGIC         "alcohol": 13.9,
 # MAGIC         "is_red": 0 }]' \
 # MAGIC   https://WORKSPACE_URL/model/MODEL_NAME/2/invocations
+
+# COMMAND ----------
+
+# MAGIC %md-sandbox
+# MAGIC &copy; 2022 Databricks, Inc. All rights reserved.<br/>
+# MAGIC Apache, Apache Spark, Spark and the Spark logo are trademarks of the <a href="http://www.apache.org/">Apache Software Foundation</a>.<br/>
+# MAGIC <br/>
+# MAGIC <a href="https://databricks.com/privacy-policy">Privacy Policy</a> | <a href="https://databricks.com/terms-of-use">Terms of Use</a> | <a href="http://help.databricks.com/">Support</a>
 
 # COMMAND ----------
 
