@@ -1,17 +1,21 @@
 # Databricks notebook source
 # MAGIC %md # Training machine learning models on tabular data: an end-to-end example
 # MAGIC 
-# MAGIC This tutorial covers the following steps:
+# MAGIC ## ![Spark Logo Tiny](https://files.training.databricks.com/images/105/logo_spark_tiny.png) In this lesson you will:<br>
 # MAGIC - Import data from your local machine into the Databricks File System (DBFS)
 # MAGIC - Visualize the data using Seaborn and matplotlib
-# MAGIC - Run a parallel hyperparameter sweep to train machine learning models on the dataset
-# MAGIC - AutoML 
-# MAGIC 
+# MAGIC - create custom PyFunc model 
+# MAGIC - log model into MlFLow
+# MAGIC - register your first model version into MlFlow
+
+# COMMAND ----------
+
+# MAGIC %md 
 # MAGIC In this example, you build a model to predict the quality of Portugese "Vinho Verde" wine based on the wine's physicochemical properties. 
 # MAGIC 
 # MAGIC The example uses a dataset from the UCI Machine Learning Repository, presented in [*Modeling wine preferences by data mining from physicochemical properties*](https://www.sciencedirect.com/science/article/pii/S0167923609001377?via%3Dihub) [Cortez et al., 2009].
 # MAGIC 
-# MAGIC ## Requirements
+# MAGIC #### Requirements
 # MAGIC This notebook requires Databricks Runtime for Machine Learning.  
 # MAGIC If you are using Databricks Runtime 7.3 LTS ML or below, you must update the CloudPickle library. To do that, uncomment and run the `%pip install` command in Cmd 2. 
 
@@ -22,11 +26,18 @@
 
 # COMMAND ----------
 
-# MAGIC %md Merge the two DataFrames into a single dataset, with a new binary feature "is_red" that indicates whether the wine is red or white.
+# MAGIC %md
+# MAGIC ## ![Spark Logo Tiny](https://files.training.databricks.com/images/105/logo_spark_tiny.png) Classroom-Setup
+# MAGIC 
+# MAGIC For each lesson to execute correctly, please make sure to run the **`configuration`** cell at the start of each lesson.
 
 # COMMAND ----------
 
 # MAGIC %run ./configuration
+
+# COMMAND ----------
+
+# MAGIC %md Merge the two DataFrames into a single dataset, with a new binary feature "is_red" that indicates whether the wine is red or white.
 
 # COMMAND ----------
 
@@ -267,42 +278,8 @@ print(f'AUC: {roc_auc_score(y_test, model.predict(X_test))}')
 
 # COMMAND ----------
 
-# MAGIC %md 
-# MAGIC ## AutoML 
-
-# COMMAND ----------
-
-# read the data
-spark_df = spark.read.format("delta").table(f'{database_name}.wine_data')
-train_df, test_df = spark_df.randomSplit([.8, .2], seed=42)
-
-# COMMAND ----------
-
-summary = automl.classify(train_df, target_col="quality", primary_metric="roc_auc", timeout_minutes=5, max_trials=20)
-
-# COMMAND ----------
-
-# let see the best trial 
-print(summary.best_trial)
-
-# COMMAND ----------
-
-# MAGIC %md 
-# MAGIC Example of how to inference the best automl run with spark 
-
-# COMMAND ----------
-
-model_uri = f"runs:/{summary.best_trial.mlflow_run_id}/model"
-predict = mlflow.pyfunc.spark_udf(spark, model_uri)
-pred_df = test_df.withColumn("prediction", predict(*test_df.drop("price").columns))
-display(pred_df)
-
-# COMMAND ----------
-
-clasify_evaluator = BinaryClassificationEvaluator(rawPredictionCol="prediction", labelCol="quality", metricName="areaUnderROC")
-areaUnderROC = clasify_evaluator.evaluate(pred_df)
-print(f"areaUnderROC on test dataset: {areaUnderROC:.3f}")
-
-# COMMAND ----------
-
-
+# MAGIC %md-sandbox
+# MAGIC &copy; 2022 Databricks, Inc. All rights reserved.<br/>
+# MAGIC Apache, Apache Spark, Spark and the Spark logo are trademarks of the <a href="http://www.apache.org/">Apache Software Foundation</a>.<br/>
+# MAGIC <br/>
+# MAGIC <a href="https://databricks.com/privacy-policy">Privacy Policy</a> | <a href="https://databricks.com/terms-of-use">Terms of Use</a> | <a href="http://help.databricks.com/">Support</a>
