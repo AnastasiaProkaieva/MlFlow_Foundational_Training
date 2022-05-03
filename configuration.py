@@ -57,10 +57,24 @@ import xgboost as xgb
 
 # define a random hash 
 uuid_num = uuid.uuid4().hex[:10]
-# put anything to distinguish your model, do not use spaces
-user_name = 'ap'
-database_name = 'anastasia_prokaieva'
+# defining a user name 
+def getUsername() -> str:
+    return spark.sql("SELECT current_user()").first()[0]
+      
+def user_name_set():
+    try:
+        username = spark.sql("SELECT current_user()").first()[0]
+        userName = re.sub("[^a-zA-Z0-9]", "_", username.lower().split("@")[0])
+        print(""" User name set to {}""".format(userName))
+    except:
+        userName = 'jon_snow'
+        print("""We cannot access your user name, please check with your workspace administrator.
+              \nUser Name set to {}""".format(userName))
+
+user_name = user_name_set()
+database_name = f'{user_name}_db'
 # creating if were not a database with a table
+print("Creating and setting the database if not exists")
 spark.sql(f"CREATE DATABASE IF NOT EXISTS {database_name}")
 spark.sql(f"USE {database_name}")
 
