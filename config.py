@@ -1,4 +1,3 @@
-# Databricks notebook source
 # Importing Modules 
 import uuid
 import os
@@ -35,7 +34,6 @@ from math import exp
 import xgboost as xgb
 
 
-# COMMAND ----------
 
 # define a random hash 
 uuid_num = uuid.uuid4().hex[:10]

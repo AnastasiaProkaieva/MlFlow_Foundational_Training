@@ -1,7 +1,8 @@
 # Databricks notebook source
 # MAGIC %md # Training machine learning models on tabular data: an end-to-end example
 # MAGIC 
-# MAGIC ## ![Spark Logo Tiny](https://files.training.databricks.com/images/105/logo_spark_tiny.png) In this lesson you will:<br>
+# MAGIC ### ![Spark Logo Tiny](https://files.training.databricks.com/images/105/logo_spark_tiny.png) In this lesson you will:<br>
+# MAGIC - set a User name and create a database
 # MAGIC - Import data from your local machine into the Databricks File System (DBFS)
 # MAGIC - Visualize the data using Seaborn and matplotlib
 # MAGIC - create custom PyFunc model 
@@ -16,7 +17,7 @@
 # MAGIC The example uses a dataset from the UCI Machine Learning Repository, presented in [*Modeling wine preferences by data mining from physicochemical properties*](https://www.sciencedirect.com/science/article/pii/S0167923609001377?via%3Dihub) [Cortez et al., 2009].
 # MAGIC 
 # MAGIC #### Requirements
-# MAGIC This notebook requires Databricks Runtime for Machine Learning.  
+# MAGIC This notebook requires Databricks Runtime for Machine Learning 9.1 LTS or above.  
 # MAGIC If you are using Databricks Runtime 7.3 LTS ML or below, you must update the CloudPickle library. To do that, uncomment and run the `%pip install` command in Cmd 2. 
 
 # COMMAND ----------
@@ -27,13 +28,50 @@
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## ![Spark Logo Tiny](https://files.training.databricks.com/images/105/logo_spark_tiny.png) Classroom-Setup
+# MAGIC ##  Classroom-Setup
+# MAGIC ![Spark Logo Tiny](https://files.training.databricks.com/images/105/logo_spark_tiny.png)
 # MAGIC 
-# MAGIC For each lesson to execute correctly, please make sure to run the **`configuration`** cell at the start of each lesson.
+# MAGIC For each lesson to execute correctly, please make sure to run the **`configuration`** cell  or ro import everything from the **`config`** file at the start of each lesson.
 
 # COMMAND ----------
 
-# MAGIC %run ./configuration
+from config import *
+
+# COMMAND ----------
+
+#%run ./configuration
+
+# COMMAND ----------
+
+# MAGIC %md 
+# MAGIC ### Create a database where all Delta Tables will be stored
+
+# COMMAND ----------
+
+user_name = user_name_set()
+database_name = f'{user_name}_db'
+# creating if were not a database with a table
+print("Creating and setting the database if not exists")
+spark.sql(f"CREATE DATABASE IF NOT EXISTS {database_name}")
+spark.sql(f"USE {database_name}")
+
+# COMMAND ----------
+
+# MAGIC %md ## Import data
+# MAGIC   
+# MAGIC In this section, you download a dataset from the web and upload it to Databricks File System (DBFS).
+# MAGIC 
+# MAGIC 1. Navigate to https://archive.ics.uci.edu/ml/machine-learning-databases/wine-quality/ and download both `winequality-red.csv` and `winequality-white.csv` to your local machine.
+# MAGIC 
+# MAGIC 1. From this Databricks notebook, select *File* > *Upload Data*, and drag these files to the drag-and-drop target to upload them to the Databricks File System (DBFS). 
+# MAGIC 
+# MAGIC     **Note**: if you don't have the *File* > *Upload Data* option, you can load the dataset from the Databricks example datasets. Uncomment and run the last two lines in the following cell.
+# MAGIC 
+# MAGIC 1. Click *Next*. Some auto-generated code to load the data appears. Select *pandas*, and copy the example code. 
+# MAGIC 
+# MAGIC 1. Create a new cell, then paste in the sample code. It will look similar to the code shown in the following cell. Make these changes:
+# MAGIC   - Pass `sep=';'` to `pd.read_csv`
+# MAGIC   - Change the variable names from `df1` and `df2` to `white_wine` and `red_wine`, as shown in the following cell.
 
 # COMMAND ----------
 
