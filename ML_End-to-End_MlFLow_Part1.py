@@ -5,9 +5,9 @@
 # MAGIC - set a User name and create a database
 # MAGIC - Import data from your local machine into the Databricks File System (DBFS)
 # MAGIC - Visualize the data using Seaborn and matplotlib
-# MAGIC - create custom PyFunc model 
-# MAGIC - log model into MlFLow
-# MAGIC - register your first model version into MlFlow
+# MAGIC - Create custom PyFunc model 
+# MAGIC - Log model into MlFLow
+# MAGIC - Register your first model version into MlFlow
 
 # COMMAND ----------
 
@@ -17,13 +17,7 @@
 # MAGIC The example uses a dataset from the UCI Machine Learning Repository, presented in [*Modeling wine preferences by data mining from physicochemical properties*](https://www.sciencedirect.com/science/article/pii/S0167923609001377?via%3Dihub) [Cortez et al., 2009].
 # MAGIC 
 # MAGIC #### Requirements
-# MAGIC This notebook requires Databricks Runtime for Machine Learning 9.1 LTS or above.  
-# MAGIC If you are using Databricks Runtime 7.3 LTS ML or below, you must update the CloudPickle library. To do that, uncomment and run the `%pip install` command in Cmd 2. 
-
-# COMMAND ----------
-
-# This command is only required if you are using a cluster running DBR 7.3 LTS ML or below. 
-#%pip install --upgrade cloudpickle
+# MAGIC This notebook requires Databricks Runtime for Machine Learning 10.4 LTS or above.  
 
 # COMMAND ----------
 
@@ -79,29 +73,11 @@ spark.sql(f"USE {database_name}")
 
 # COMMAND ----------
 
-# If you have the File > Upload Data menu option, follow the instructions in the previous cell to upload the data from your local machine.
-# The generated code, including the required edits described in the previous cell, is shown here for reference.
 
-# In the following lines, replace <username> with your username.
-#white_wine = pd.read_csv("/dbfs/FileStore/shared_uploads/<username>/winequality_white.csv", sep=';')
-#red_wine = pd.read_csv("/dbfs/FileStore/shared_uploads/<username>/winequality_red.csv", sep=';')
-
-# If you do not have the File > Upload Data menu option, uncomment and run these lines to load the dataset.
-white_wine = pd.read_csv("/dbfs/databricks-datasets/wine-quality/winequality-white.csv", sep=";")
-red_wine = pd.read_csv("/dbfs/databricks-datasets/wine-quality/winequality-red.csv", sep=";")
-
-red_wine['is_red'] = 1
-white_wine['is_red'] = 0
-
-data = pd.concat([red_wine, white_wine], axis=0)
-# Remove spaces from column names
-data.rename(columns=lambda x: x.replace(' ', '_'), inplace=True)
-# Let's check the header of the input data 
-data.head()
 
 # COMMAND ----------
 
-data.shape
+
 
 # COMMAND ----------
 
@@ -172,22 +148,31 @@ data.isna().any()
 
 # COMMAND ----------
 
-train, test = train_test_split(data, random_state=123)
-X_train = train.drop(["quality"], axis=1)
-X_test = test.drop(["quality"], axis=1)
-y_train = train.quality
-y_test = test.quality
+TARGET = 'quality'
+X_train, y_train, X_test, y_test = dataset_prep(data, label=TARGET, table2save="wine_dataset")
 
 # COMMAND ----------
 
-# Save test and train into delta 
-# write into Spark DF 
-spark_df = spark.createDataFrame(data)
-spark_df.write.format("delta").mode("overwrite").option('overwriteSchema', 'true').saveAsTable("wine_data")
+display(spark.read.table("wine_dataset"))
 
 # COMMAND ----------
 
-display(spark_df)
+# MAGIC %sql 
+# MAGIC show tables
+
+# COMMAND ----------
+
+# MAGIC %sql 
+# MAGIC describe history wine_dataset
+
+# COMMAND ----------
+
+# MAGIC %md 
+# MAGIC Let's explore our dataset with the Databricks Data Profiler 
+
+# COMMAND ----------
+
+display(spark.read.table("wine_dataset"))
 
 # COMMAND ----------
 
@@ -195,6 +180,11 @@ display(spark_df)
 # MAGIC This task seems well suited to a random forest classifier, since the output is binary and there may be interactions between multiple variables.
 # MAGIC 
 # MAGIC The following code builds a simple classifier using scikit-learn. It uses MLflow to keep track of the model accuracy, and to save the model for later use.
+
+# COMMAND ----------
+
+conda_env = mlflow.pyfunc.get_default_conda_env()
+print(conda_env)
 
 # COMMAND ----------
 
@@ -212,32 +202,90 @@ class SklearnModelWrapper(mlflow.pyfunc.PythonModel):
 # mlflow.start_run creates a new MLflow run to track the performance of this model. 
 # Within the context, you call mlflow.log_param to keep track of the parameters used, and
 # mlflow.log_metric to record metrics like accuracy.
-with mlflow.start_run(run_name=f'untuned_random_forest_{user_name}'):
-  n_estimators = 10 
-  model = RandomForestClassifier(n_estimators=n_estimators, random_state=np.random.RandomState(123))
-  model.fit(X_train, y_train)
 
+params_rf = {
+  'n_estimators': 50,
+  'max_depth':7,
+  'random_state':np.random.RandomState(123)
+            }
+
+# To do allow users to use previously created experiments 
+# set an experiment if does not exist 
+
+# COMMAND ----------
+
+conda_env
+
+# COMMAND ----------
+
+
+with mlflow.start_run(run_name=f'untuned_random_forest_{user_name}'):
+  
+  model = RandomForestClassifier(**params_rf)
+  model.fit(X_train, y_train)
   # predict_proba returns [prob_negative, prob_positive], so slice the output with [:, 1]
   predictions_test = model.predict_proba(X_test)[:,1]
   auc_score = roc_auc_score(y_test, predictions_test)
-  mlflow.log_param('n_estimators', n_estimators)
+  # Logging parameters used to train our model 
+  mlflow.log_params(params_rf)
   # Use the area under the ROC curve as a metric.
   mlflow.log_metric('auc', auc_score)
+
   # Wrap the model 
   wrappedModel = SklearnModelWrapper(model)
   # Log the model with a signature that defines the schema of the model's inputs and outputs. 
   # When the model is deployed, this signature will be used to validate inputs.
   signature = infer_signature(X_train, wrappedModel.predict(None, X_train))
-  
   # MLflow contains utilities to create a conda environment used to serve models.
   # The necessary dependencies are added to a conda.yaml file which is logged along with the model.
-  conda_env =  _mlflow_conda_env(
-        additional_conda_deps=None,
-        additional_pip_deps=["cloudpickle=={}".format(cloudpickle.__version__), "scikit-learn=={}".format(sklearn.__version__)],
-        additional_conda_channels=None,
-    )
   # log your model into MlFlow 
   mlflow.pyfunc.log_model(f"random_forest_model_{user_name}", python_model=wrappedModel, conda_env=conda_env, signature=signature)
+  
+  # Log metrics for the train and test set
+  mdl_train_metrics = mlflow.sklearn.eval_and_log_metrics(model, X_train, y_train, prefix="train_")
+  mdl_test_metrics = mlflow.sklearn.eval_and_log_metrics(model, X_test, y_test, prefix="test_")
+  # Display the logged metrics
+  mdl_train_metrics = {k.replace("train_", ""): v for k, v in mdl_train_metrics.items()}
+  mdl_test_metrics = {k.replace("test_", ""): v for k, v in mdl_test_metrics.items()}
+  display(pd.DataFrame([mdl_train_metrics, mdl_test_metrics], index=["train", "test"]))
+  
+
+# COMMAND ----------
+
+# MAGIC %md 
+# MAGIC to read more about mlflow 
+
+# COMMAND ----------
+
+
+
+# COMMAND ----------
+
+model = RandomForestClassifier(**params_rf)
+# construct an evaluation dataset from the test set
+eval_data = X_test
+eval_data["target"] = y_test
+
+with mlflow.start_run(run_name=f'untuned_random_forest_{user_name}'):
+  
+  model.fit(X_train, y_train)
+  # predict_proba returns [prob_negative, prob_positive], so slice the output with [:, 1]
+  predictions_test = model.predict_proba(X_test)[:,1]
+  auc_score = roc_auc_score(y_test, predictions_test)
+  # Logging parameters used to train our model 
+  mlflow.log_params(params_rf)
+  # Use the area under the ROC curve as a metric.
+  mlflow.log_metric('auc', auc_score)
+ 
+  model_info = mlflow.sklearn.log_model(model, "sklearn_rf_model")
+  result = mlflow.evaluate(
+       model_info.model_uri,
+       eval_data,
+       targets='target',
+       model_type="classifier",
+       dataset_name="wine_dataset",
+       evaluators=["default"],
+   )
 
 # COMMAND ----------
 
