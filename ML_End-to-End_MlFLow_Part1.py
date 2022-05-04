@@ -261,8 +261,8 @@ with mlflow.start_run(run_name=f'untuned_random_forest_{user_name}'):
        model_type="classifier",
        dataset_name="wine_dataset",
        evaluators="default",
-       evaluator_config={#"explainability_nsamples":10,
-                         "log_model_explainability": False
+       evaluator_config={#"explainability_nsamples":100, # for now keep this feature off, this should generate the Tree Explainer but there is a bug in SHAP
+                         "log_model_explainability": False # turning SHAP off
                         }
    )
 
