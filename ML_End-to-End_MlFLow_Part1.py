@@ -29,11 +29,7 @@
 
 # COMMAND ----------
 
-from config import *
-
-# COMMAND ----------
-
-#%run ./configuration
+# MAGIC %run ./configuration
 
 # COMMAND ----------
 
@@ -42,6 +38,8 @@ from config import *
 
 # COMMAND ----------
 
+# define a random hash 
+uuid_num = uuid.uuid4().hex[:10]
 user_name = user_name_set()
 database_name = f'{user_name}_db'
 # creating if were not a database with a table
@@ -73,11 +71,11 @@ spark.sql(f"USE {database_name}")
 
 # COMMAND ----------
 
-
+data = read_wine_dataset()
 
 # COMMAND ----------
 
-
+data.head()
 
 # COMMAND ----------
 
@@ -87,30 +85,11 @@ spark.sql(f"USE {database_name}")
 
 # COMMAND ----------
 
-# MAGIC %md Plot a histogram of the dependent variable, quality.
-
-# COMMAND ----------
-
-import seaborn as sns
-sns.distplot(data.quality, kde=False)
-
-# COMMAND ----------
-
-# MAGIC %md Looks like quality scores are normally distributed between 3 and 9. 
-# MAGIC 
-# MAGIC Define a wine as high quality if it has quality >= 7.
-
-# COMMAND ----------
-
-high_quality = (data.quality >= 7).astype(int)
-data.quality = high_quality
-
-# COMMAND ----------
-
 # MAGIC %md Box plots are useful in noticing correlations between features and a binary label.
 
 # COMMAND ----------
 
+import seaborn as sns
 import matplotlib.pyplot as plt
 
 dims = (3, 4)
@@ -253,17 +232,14 @@ with mlflow.start_run(run_name=f'untuned_random_forest_{user_name}'):
 # COMMAND ----------
 
 # MAGIC %md 
-# MAGIC to read more about mlflow 
-
-# COMMAND ----------
-
-
+# MAGIC A new experimental feature in MlFlow - `mlflow.evaluate`.
+# MAGIC Warning: this feature is in experimental stage, so please use with cautious. 
 
 # COMMAND ----------
 
 model = RandomForestClassifier(**params_rf)
 # construct an evaluation dataset from the test set
-eval_data = X_test
+eval_data = X_test.copy()
 eval_data["target"] = y_test
 
 with mlflow.start_run(run_name=f'untuned_random_forest_{user_name}'):
@@ -284,7 +260,10 @@ with mlflow.start_run(run_name=f'untuned_random_forest_{user_name}'):
        targets='target',
        model_type="classifier",
        dataset_name="wine_dataset",
-       evaluators=["default"],
+       evaluators="default",
+       evaluator_config={#"explainability_nsamples":10,
+                         "log_model_explainability": False
+                        }
    )
 
 # COMMAND ----------
