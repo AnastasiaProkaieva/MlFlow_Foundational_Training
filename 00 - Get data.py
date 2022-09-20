@@ -1,9 +1,13 @@
 # Databricks notebook source
+# MAGIC %run ./setup
+
+# COMMAND ----------
+
 # MAGIC %md
 # MAGIC 
 # MAGIC ## Get Data
 # MAGIC 
-# MAGIC In the labs, we will assume that we the data is uploaded to this location: **/FileStore/mltraining20220621/chrun_data/** 
+# MAGIC In the labs, we will assume that we the data is uploaded to this location: **/FileStore/mltraining/chrun_data/** 
 # MAGIC ### Using the Data UI:
 # MAGIC 
 # MAGIC 1. Download the [data csv file](https://github.com/IBM/telco-customer-churn-on-icp4d/blob/master/data/Telco-Customer-Churn.csv) from github
@@ -19,17 +23,17 @@
 # COMMAND ----------
 
 # DBTITLE 1,Download the file
-# MAGIC %sh mkdir -p /FileStore/mltraining20220621/churn_data; wget -O /FileStore/mltraining20220621/churn_data/Telco-Customer-Churn.csv https://raw.githubusercontent.com/IBM/telco-customer-churn-on-icp4d/master/data/Telco-Customer-Churn.csv
+# MAGIC %sh mkdir -p /FileStore/mltraining/churn_data; wget -O /FileStore/mltraining/churn_data/Telco-Customer-Churn.csv https://raw.githubusercontent.com/IBM/telco-customer-churn-on-icp4d/master/data/Telco-Customer-Churn.csv
 
 # COMMAND ----------
 
 # DBTITLE 1,Create a DBFS data location 
-# MAGIC %fs mkdirs /FileStore/mltraining20220621/churn_data
+# MAGIC %fs mkdirs /FileStore/mltraining/churn_data
 
 # COMMAND ----------
 
 # DBTITLE 1,Copy file to the DBFS data location
-# MAGIC %fs cp file:/FileStore/mltraining20220621/churn_data/Telco-Customer-Churn.csv dbfs:/FileStore/mltraining20220621/churn_data/Telco-Customer-Churn.csv
+# MAGIC %fs cp file:/FileStore/mltraining/churn_data/Telco-Customer-Churn.csv dbfs:/FileStore/mltraining/churn_data/Telco-Customer-Churn.csv
 
 # COMMAND ----------
 
@@ -41,7 +45,7 @@
 # COMMAND ----------
 
 # DBTITLE 1,Check if the file exists
-# MAGIC %fs ls /FileStore/mltraining20220621/churn_data/
+# MAGIC %fs ls /FileStore/mltraining/churn_data/
 
 # COMMAND ----------
 
@@ -54,9 +58,8 @@
 # COMMAND ----------
 
 # DBTITLE 1,Please DO NOT change the variables values
-dbName = "mltraining20220621"
 # We assume the data csv file is located in teleco_churn_dataset as stated in the previous section
-teleco_churn_dataset = "/FileStore/mltraining20220621/churn_data/"
+teleco_churn_dataset = "/FileStore/mltraining/churn_data/"
 
 # COMMAND ----------
 
@@ -77,5 +80,13 @@ telco_df.write.format("delta").mode("overwrite").saveAsTable(f"{dbName}.telco_ch
 # COMMAND ----------
 
 # DBTITLE 1,Check table is created
-# MAGIC %sql
-# MAGIC SELECT * FROM mltraining20220621.telco_churn
+display(spark.sql(f""" SELECT * FROM {dbName}.telco_churn"""))
+
+# COMMAND ----------
+
+# MAGIC %md-sandbox
+# MAGIC &copy; 2022 Databricks, Inc. All rights reserved.<br/>Apache, Apache Spark, Spark and the Spark logo are trademarks of the <a href="http://www.apache.org/">Apache Software Foundation</a>.<br/><br/><a href="https://databricks.com/privacy-policy">Privacy Policy</a> | <a href="https://databricks.com/terms-of-use">Terms of Use</a> | <a href="http://help.databricks.com/">Support</a>
+
+# COMMAND ----------
+
+
