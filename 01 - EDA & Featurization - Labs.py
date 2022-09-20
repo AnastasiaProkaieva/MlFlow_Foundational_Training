@@ -1,4 +1,23 @@
 # Databricks notebook source
+dbutils.widgets.removeAll()
+dbutils.widgets.text("feature_table_name", "telco_churn_features_FT", "Feature Table name")
+dbutils.widgets.text("model_name", "telco_churn_FT", "Model Name to be register")
+dbutils.widgets.text("db_prefix", "churn_mlops", "Database Prefix")
+dbutils.widgets.text("user_name", "PLACE HERE YOUR USER NAME", "User Name")
+dbutils.widgets.text("table_name", "telco_churn_FT", "Delta Table Name")
+
+# COMMAND ----------
+
+db_name = dbutils.widgets.get("db_prefix") + "_" + dbutils.widgets.get("user_name")
+delta_table_name = dbutils.widgets.get("table_name") + "_" + dbutils.widgets.get("user_name")
+fs_table_name = dbutils.widgets.get("feature_table_name") + "_" + dbutils.widgets.get("user_name")
+model_name_registry = dbutils.widgets.get("model_name") + "_" + dbutils.widgets.get("user_name")
+print(f"Your database is {db_name}, this is where your table will be store.\n")
+print(f"We will work with 2 tables {delta_table_name} and {fs_table_name}\n")
+print(f"Your model will be saved under the name {model_name_registry}\n")
+
+# COMMAND ----------
+
 # MAGIC %md
 # MAGIC # Exploratory Data Analysis & Feature Engineering
 # MAGIC 
@@ -8,25 +27,6 @@
 # MAGIC Our first step is to analyze the data and build the features we'll use to train our model. Let's see how this can be done.
 # MAGIC 
 # MAGIC <img src="https://github.com/aminenouira-db/images/blob/main/mlops-end2end-flow-1.png?raw=true" width="1200">
-
-# COMMAND ----------
-
-# DBTITLE 1,Define variable & database
-# For multiple users working is the same workspace, we'd create a different database to store the feature store
-import re
-current_user = dbutils.notebook.entry_point.getDbutils().notebook().getContext().tags().apply('user')
-dbName = "delta_" + re.sub(r'\W+', '_', current_user)
-# We assume the notebook 00-Get Data was executed successfully ( upload data and create delta table)
-telco_churn_table ="telco_churn"
-telco_churn_dataset = "/FileStore/mltraining20220621/churn_data/"
-model_name = "customer_churn_mltwfs_" + re.sub(r'\W+', '_', current_user)
-spark.sql(f"""CREATE DATABASE IF NOT EXISTS {dbName}""")
-spark.sql(f"""USE {dbName}""")
-
-# COMMAND ----------
-
-# MAGIC %sql
-# MAGIC CREATE TABLE IF NOT EXISTS telco_churn SHALLOW CLONE mltraining20220621.telco_churn
 
 # COMMAND ----------
 
@@ -67,7 +67,7 @@ spark.sql(f"""USE {dbName}""")
 
 #Just import pyspark pandas to leverage spark distributed capabilities:
 import pyspark.pandas as ps
-telco_ps_df = #TODO read data from the file location "telco_churn_dataset"
+telco_ps_df = spark.read.table(f"{db_name}.{delta_table_name}")
 display(telco_ps_df)
 
 # COMMAND ----------
@@ -81,11 +81,7 @@ display(telco_ps_df)
 
 # Plot distribution of target variable - Churn column
 #TODO: Generate a bar plot
-
-# COMMAND ----------
-
-ps.sql("""SELECT churn, SeniorCitizen, COUNT(*) AS num_customer_per_seniority 
-  FROM {telco_ps_df} GROUP BY SeniorCitizen, churn""", telco_ps_df=telco_ps_df).pivot(index="churn", columns="SeniorCitizen", values="num_customer_per_seniority").plot.bar()
+display(telco_ps_df)
 
 # COMMAND ----------
 
@@ -98,6 +94,7 @@ ps.sql("""SELECT churn, SeniorCitizen, COUNT(*) AS num_customer_per_seniority
 # COMMAND ----------
 
 #TODO use the data profile tab with display(telco_ps_df)
+display(telco_ps_df)
 
 # COMMAND ----------
 
@@ -123,25 +120,43 @@ ps.sql("""SELECT churn, SeniorCitizen, COUNT(*) AS num_customer_per_seniority
 # COMMAND ----------
 
 # DBTITLE 1,Using Pandas on Spark API
-# 0/1 -> boolean
-# TODO: SeniorCitizen: From Numeric to Boolean: 0 -> False , 1 -> True
 
-# Contract categorical -> duration in months
-# TODO: Contract: From String to Numeric (integer): Month-to-month -> 1 , One year -> 12 , Two year -> 24
+import pyspark.pandas as ps
 
+def compute_churn_features_koalas(data):
+  
+  # Convert to koalas
+  data = data.to_pandas_on_spark()
+  
+  # OHE
+  data = ps.get_dummies(data, 
+                        columns=['gender', 'Partner', 'Dependents',
+                                 'PhoneService', 'MultipleLines', 'InternetService',
+                                 'OnlineSecurity', 'OnlineBackup', 'DeviceProtection',
+                                 'TechSupport', 'StreamingTV', 'StreamingMovies',
+                                 'Contract', 'PaperlessBilling', 'PaymentMethod'],dtype = 'int64')
+  
+  # Convert label to int and rename column
+  data['Churn'] = data['Churn'].map({'Yes': 1, 'No': 0})
+  data = data.astype({'Churn': 'int32'})
+  
+  # Clean up column names
+  data.columns = data.columns.str.replace(' ', '')
+  data.columns = data.columns.str.replace('(', '-')
+  data.columns = data.columns.str.replace(')', '')
+  
+  # Drop missing values
+  data = data.dropna()
+  
+  return data
 
-
-
-# TODO: TotalCharges: From String to Numeric and fill the non-castable values (spaces only) with 0.0
-
-
-display(telco_ps_df.summary())
+display(compute_churn_features_koalas(telco_ps_df))
 
 # COMMAND ----------
 
 # DBTITLE 1,Using PySpark - Mandatory to run for the feature store section
 import pyspark.sql.functions as F
-telco_df = spark.table(f"{dbName}.{telco_churn_table}")
+telco_df = spark.read.table(f"{db_name}.{delta_table_name}")
 # 0/1 -> boolean
 telco_df = telco_df.withColumn("SeniorCitizen", F.col("SeniorCitizen") == 1)
 # Contract categorical -> duration in months
@@ -153,8 +168,7 @@ telco_df = telco_df.withColumn("Contract",\
 telco_df = telco_df.withColumn("TotalCharges",\
     F.when(F.length(F.trim(F.col("TotalCharges"))) == 0, 0.0).\
     otherwise(F.col("TotalCharges").cast('double')))
-# Cache DataFrame
-telco_df.cache()
+
 display(telco_df)
 
 # COMMAND ----------
@@ -189,7 +203,7 @@ from databricks.feature_store import FeatureStoreClient
 fs = FeatureStoreClient()
 # Create the feature store based on df schema and write df to it
 features_table = fs.create_table(
-  name=f'{dbName}.telco_churn_features',
+  name=f'{db_name}.{fs_table_name}',
   primary_keys=['customerID'],
   df=telco_df,
   description='Telco churn features')
@@ -203,7 +217,7 @@ help(fs.drop_table)
 # COMMAND ----------
 
 # Verify the feature store has been created and populated successfully
-features_table = fs.read_table(f'{dbName}.telco_churn_features')
+features_table = fs.read_table(f'{db_name}.{fs_table_name}')
 display(features_table)
 
 # COMMAND ----------
@@ -228,7 +242,7 @@ display(features_table)
 
 from databricks.feature_store import FeatureLookup
 # Get metadata about the feature store
-features_table = fs.get_table(f'{dbName}.telco_churn_features')
+features_table = fs.get_table(f'{db_name}.{fs_table_name}')
 # Optional for FS but good to remember as a good practice: Drop the label & key columns from the list of features to use for the model
 features = features_table.features
 features.remove("Churn")
@@ -269,37 +283,35 @@ mlflow.sklearn.autolog()
 # Create the training dataframe. We will feed this dataframe to our model to perform the feature lookup from the feature store and then train the model
 train_data_df = telco_df.select("customerID", "Churn")
 
-# Define a method for reuse later
-def fit_model(model_feature_lookups):
 
-  with mlflow.start_run():
-    # Use a combination of Feature Store features and data residing outside Feature Store in the training set
-    training_set = fs.create_training_set(train_data_df, model_feature_lookups, label="Churn", exclude_columns="customerID")
+with mlflow.start_run():
+  # Use a combination of Feature Store features and data residing outside Feature Store in the training set
+  training_set = fs.create_training_set(train_data_df, features_table_lookups , label="Churn", exclude_columns="customerID")
 
-    training_pd = training_set.load_df().toPandas()
-    X = training_pd.drop("Churn", axis=1)
-    y = training_pd["Churn"]
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+  training_pd = training_set.load_df().toPandas()
+  X = training_pd.drop("Churn", axis=1)
+  y = training_pd["Churn"]
+  X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-    # Not attempting to tune the model at all for purposes here
-    gb_classifier = GradientBoostingClassifier(n_iter_no_change=10)
-    # Need to encode categorical cols
-    encoders = ColumnTransformer(transformers=[('encoder', OneHotEncoder(handle_unknown='ignore'), X.columns[X.dtypes == 'object'])])
-    pipeline = Pipeline([("encoder", encoders), ("gb_classifier", gb_classifier)])
-    pipeline_model = pipeline.fit(X_train, y_train)
-    
-    mlflow.log_metric('test_accuracy', pipeline_model.score(X_test, y_test))
+  # Not attempting to tune the model at all for purposes here
+  gb_classifier = GradientBoostingClassifier(n_iter_no_change=10)
+  # Need to encode categorical cols
+  encoders = ColumnTransformer(transformers=[('encoder', OneHotEncoder(handle_unknown='ignore'), X.columns[X.dtypes == 'object'])])
+  pipeline = Pipeline([("encoder", encoders), ("gb_classifier", gb_classifier)])
+  pipeline_model = pipeline.fit(X_train, y_train)
 
-    fs.log_model(
-      pipeline_model,
-      "model",
-      flavor=mlflow.sklearn,
-      training_set=training_set,
-      registered_model_name=model_name,
-      input_example=X[:100],
-      signature=infer_signature(X, y))
-      
-fit_model(features_table_lookups)
+  mlflow.log_metric('test_accuracy', pipeline_model.score(X_test, y_test))
+
+  fs.log_model(
+    pipeline_model,
+    "model",
+    flavor=mlflow.sklearn,
+    training_set=training_set,
+    registered_model_name=model_name,
+    input_example=X[:100],
+    signature=infer_signature(X, y))
+
+
 
 # COMMAND ----------
 
@@ -337,45 +349,47 @@ display(with_predictions)
 
 # MAGIC %md
 # MAGIC #### Create database with the same name in the online store (Azure MySQL here).
-
-# COMMAND ----------
-
-scope = "online_fs"
-user = dbutils.secrets.get(scope, "ofs-user")
-password = dbutils.secrets.get(scope, "ofs-password")
-import mysql.connector
-import pandas as pd
-cnx = mysql.connector.connect(user=user,
-                              password=password,
-                              host=<hostname>)
-cursor = cnx.cursor()
-cursor.execute(f"CREATE DATABASE IF NOT EXISTS {dbName};")
-
-# COMMAND ----------
-
-import datetime
-from databricks.feature_store.online_store_spec import AzureMySqlSpec
- 
-online_store = AzureMySqlSpec(
-  hostname=<hostname>,
-  port=3306,
-  read_secret_prefix='online_fs/ofs',
-  write_secret_prefix='online_fs/ofs'
-)
- 
-fs.publish_table(
-  name=f'{dbName}.demographic_features',
-  online_store=online_store,
-  mode='overwrite'
-)
- 
-fs.publish_table(
-  name=f'{dbName}.service_features',
-  online_store=online_store,
-  mode='overwrite'
-)
-
-# COMMAND ----------
-
-# MAGIC %md
+# MAGIC 
+# MAGIC 
+# MAGIC ```
+# MAGIC scope = "online_fs"
+# MAGIC user = dbutils.secrets.get(scope, "ofs-user")
+# MAGIC password = dbutils.secrets.get(scope, "ofs-password")
+# MAGIC import mysql.connector
+# MAGIC import pandas as pd
+# MAGIC cnx = mysql.connector.connect(user=user,
+# MAGIC                               password=password,
+# MAGIC                               host=<hostname>)
+# MAGIC cursor = cnx.cursor()
+# MAGIC cursor.execute(f"CREATE DATABASE IF NOT EXISTS {dbName};")
+# MAGIC 
+# MAGIC 
+# MAGIC import datetime
+# MAGIC from databricks.feature_store.online_store_spec import AzureMySqlSpec
+# MAGIC  
+# MAGIC online_store = AzureMySqlSpec(
+# MAGIC   hostname=<hostname>,
+# MAGIC   port=3306,
+# MAGIC   read_secret_prefix='online_fs/ofs',
+# MAGIC   write_secret_prefix='online_fs/ofs'
+# MAGIC )
+# MAGIC  
+# MAGIC fs.publish_table(
+# MAGIC   name=f'{dbName}.demographic_features',
+# MAGIC   online_store=online_store,
+# MAGIC   mode='overwrite'
+# MAGIC )
+# MAGIC  
+# MAGIC fs.publish_table(
+# MAGIC   name=f'{dbName}.service_features',
+# MAGIC   online_store=online_store,
+# MAGIC   mode='overwrite'
+# MAGIC )
+# MAGIC 
+# MAGIC ```
+# MAGIC 
 # MAGIC This becomes visible in the feature table's UI as an "Online Store" also containing the same data.
+
+# COMMAND ----------
+
+

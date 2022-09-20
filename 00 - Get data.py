@@ -1,4 +1,12 @@
 # Databricks notebook source
+dbutils.widgets.removeAll()
+dbutils.widgets.dropdown("reset_all_data", "True", ["True", "False"])
+dbutils.widgets.text("db_prefix", "churn_mlops", "Database Prefix")
+dbutils.widgets.text("user_name", "anastasia_prokaieva", "User Name") # Place here your user name from set up or keep with this one 
+dbutils.widgets.text("table_name", "telco_churn_FT", "Your Delta Table Name")
+
+# COMMAND ----------
+
 # MAGIC %run ./setup
 
 # COMMAND ----------
@@ -63,24 +71,20 @@ teleco_churn_dataset = "/FileStore/mltraining/churn_data/"
 
 # COMMAND ----------
 
-# Create the database if does not exists
-spark.sql(f"""CREATE DATABASE IF NOT EXISTS {dbName}""")
-spark.sql(f"""USE {dbName}""")
-
-# COMMAND ----------
-
 # MAGIC %md
 # MAGIC #### Read data and store it in a managed delta table
 
 # COMMAND ----------
 
+table_name = dbutils.widgets.get("table_name") + "_" + dbutils.widgets.get("user_name")
+print(f"Saving your table unde the name of {table_name}")
 telco_df = spark.read.csv(teleco_churn_dataset, header="true", inferSchema="true")
-telco_df.write.format("delta").mode("overwrite").saveAsTable(f"{dbName}.telco_churn")
+telco_df.write.format("delta").mode("overwrite").saveAsTable(f"{dbName}.{table_name}")
 
 # COMMAND ----------
 
 # DBTITLE 1,Check table is created
-display(spark.sql(f""" SELECT * FROM {dbName}.telco_churn"""))
+display(spark.sql(f""" SELECT * FROM {dbName}.{table_name}"""))
 
 # COMMAND ----------
 

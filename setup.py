@@ -1,7 +1,7 @@
 # Databricks notebook source
 dbutils.widgets.removeAll()
 dbutils.widgets.dropdown("reset_all_data", "True", ["True", "False"])
-dbutils.widgets.text("db_prefix", "churn_mlops", "Database prefix")
+dbutils.widgets.text("db_prefix", "churn_mlops", "Database Name")
 
 # COMMAND ----------
 
@@ -31,9 +31,9 @@ else:
   current_user_no_at = current_user
   
 current_user_no_at = re.sub(r'\W+', '_', current_user_no_at)
-  
-db_prefix = dbutils.widgets.get("db_prefix")
 
+
+db_prefix = dbutils.widgets.get("db_prefix")
 dbName = db_prefix+"_"+current_user_no_at
 cloud_storage_path = f"/Users/{current_user}/demo/{db_prefix}"
 reset_all = dbutils.widgets.get("reset_all_data") == "true"
@@ -42,7 +42,6 @@ if reset_all:
   print(f"Resetting the DataBase, new database will have the name of {dbName}")
   spark.sql(f"DROP DATABASE IF EXISTS {dbName} CASCADE")
   dbutils.fs.rm(cloud_storage_path, True)
-
 
 print(f"we are using {dbName} database")
 print("Database will be in cloud_storage_path {}".format(cloud_storage_path))
@@ -53,12 +52,3 @@ spark.sql(f"""USE {dbName}""")
 
 print("HERE YOUR DATABASE is", dbName, " PLEASE COPY THIS INTO YOUR NEXT STEP if required \n")
 print("HERE YOUR USERNAME is  ", current_user_no_at)
-
-# COMMAND ----------
-
-
-
-# COMMAND ----------
-
-# MAGIC %md-sandbox
-# MAGIC &copy; 2022 Databricks, Inc. All rights reserved.<br/>Apache, Apache Spark, Spark and the Spark logo are trademarks of the <a href="http://www.apache.org/">Apache Software Foundation</a>.<br/><br/><a href="https://databricks.com/privacy-policy">Privacy Policy</a> | <a href="https://databricks.com/terms-of-use">Terms of Use</a> | <a href="http://help.databricks.com/">Support</a>
