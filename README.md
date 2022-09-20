@@ -50,3 +50,7 @@ Databricks is uniquely positioned to solve this challenge with the Lakehouse pat
 In this demo, we'll implement a full MLOps pipeline, step by step:
 
 <img src="https://github.com/QuentinAmbard/databricks-demo/raw/main/product_demos/mlops-end2end-flow-0.png" width="1200">
+
+
+Teh original data source is coming from : 
+https://github.com/IBM/telco-customer-churn-on-icp4d/blob/master/data/Telco-Customer-Churn.csv

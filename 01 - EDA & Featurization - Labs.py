@@ -73,8 +73,6 @@ display(telco_ps_df)
 # COMMAND ----------
 
 # MAGIC %md 
-# MAGIC Pandas API on spark use plotly with interactive charts. Use the standard `.plot` on a pandas dataframe to get insights.
-# MAGIC 
 # MAGIC **Task**: Plot the distribution of the label variable (Churn column) using plotly to check if the data is unbalanced
 
 # COMMAND ----------
@@ -116,6 +114,19 @@ display(telco_ps_df)
 # MAGIC 
 # MAGIC 
 # MAGIC PS: This part can be externalized and run is a scheduled job.
+# MAGIC 
+# MAGIC 
+# MAGIC ```
+# MAGIC telco_ps_df["SeniorCitizen"] = telco_ps_df["SeniorCitizen"]==1
+# MAGIC # Contract categorical -> duration in months
+# MAGIC telco_ps_df.loc[telco_ps_df.Contract=='Month-to-month', 'Contract'] = 1
+# MAGIC telco_ps_df.loc[telco_ps_df.Contract=='One year', 'Contract'] = 12
+# MAGIC telco_ps_df.loc[telco_ps_df.Contract=='Two year', 'Contract'] = 24
+# MAGIC telco_ps_df["Contract"] = telco_ps_df["Contract"].astype("int")
+# MAGIC # TotalCharges Categorical to Numeric and fill the non-castable values (spaces only) with 0.0
+# MAGIC telco_ps_df.loc[len(telco_ps_df.TotalCharges.str.strip())==0, "TotalCharges"] = 0
+# MAGIC telco_ps_df["TotalCharges"] = telco_ps_df["TotalCharges"].astype("double")
+# MAGIC ```
 
 # COMMAND ----------
 
@@ -392,4 +403,5 @@ display(with_predictions)
 
 # COMMAND ----------
 
-
+# MAGIC %md-sandbox
+# MAGIC &copy; 2022 Databricks, Inc. All rights reserved.<br/>Apache, Apache Spark, Spark and the Spark logo are trademarks of the <a href="http://www.apache.org/">Apache Software Foundation</a>.<br/><br/><a href="https://databricks.com/privacy-policy">Privacy Policy</a> | <a href="https://databricks.com/terms-of-use">Terms of Use</a> | <a href="http://help.databricks.com/">Support</a>
