@@ -223,7 +223,8 @@ features_table = fs.create_table(
 
 # Drop feature table if it exists
 # fs.drop_table(name=f'{dbName}.telco_churn_features'),
-help(fs.drop_table)
+# help(fs.drop_table) # only from DBR 11 
+help(fs.create_table)
 
 # COMMAND ----------
 
@@ -342,7 +343,7 @@ from pyspark.sql.functions import col
 # Get the dataframe of customer ids to predict
 batch_input_df = train_data_df.select("customerID")
 # Generate predictions with fs.score_batch
-with_predictions = fs.score_batch(f"models:/{model_name}/1", batch_input_df, result_type='string')
+with_predictions = fs.score_batch(f"models:/{model_name_registry}/1", batch_input_df, result_type='string')
 display(with_predictions)
 
 # COMMAND ----------

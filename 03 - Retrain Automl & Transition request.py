@@ -48,8 +48,10 @@ display(features)
 # DBTITLE 1,Run AutoML
 import databricks.automl
 model = databricks.automl.classify(features, 
-                                   target_col = "Churn", exclude_cols=["customerID"], max_trials = 25,
-                                   data_dir= "dbfs:/tmp/", 
+                                   target_col = "Churn", # select your target DF
+                                   exclude_columns=["customerID"], # userID is a useles here, then drop it
+                                   max_trials = 5, # to make it run faster please limit the amount of models trained 
+                                   data_dir= "dbfs:/tmp/", # where the output will be store, the tmp is often the best option
                                    timeout_minutes=5) 
 
 # COMMAND ----------

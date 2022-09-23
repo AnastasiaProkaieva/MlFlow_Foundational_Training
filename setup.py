@@ -10,7 +10,7 @@ import re
 try:
   min_required_version = dbutils.widgets.get("min_dbr_version")
 except:
-  min_required_version = "11.0"
+  min_required_version = "10.4"
 
 version_tag = spark.conf.get("spark.databricks.clusterUsageTags.sparkVersion")
 version_search = re.search('^([0-9]*\.[0-9]*)', version_tag)
