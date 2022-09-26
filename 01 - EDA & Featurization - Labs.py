@@ -68,6 +68,9 @@ print(f"Your model will be saved under the name {model_name_registry}\n")
 #Just import pyspark pandas to leverage spark distributed capabilities:
 import pyspark.pandas as ps
 telco_ps_df = spark.read.table(f"{db_name}.{delta_table_name}")
+
+# COMMAND ----------
+
 display(telco_ps_df)
 
 # COMMAND ----------
@@ -78,7 +81,7 @@ display(telco_ps_df)
 # COMMAND ----------
 
 # Plot distribution of target variable - Churn column
-#TODO: Generate a bar plot
+#TODO: Generate a scatter/histogram plots
 display(telco_ps_df)
 
 # COMMAND ----------
