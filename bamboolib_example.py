@@ -1,4 +1,9 @@
 # Databricks notebook source
+# MAGIC %md 
+# MAGIC Please keep in mind that this require an installation on a cluster. then you will not be able to run it unless you have those permissions.
+
+# COMMAND ----------
+
 !pip install bamboolib==1.30.17
 
 # COMMAND ----------
