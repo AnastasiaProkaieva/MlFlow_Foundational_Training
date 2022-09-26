@@ -56,12 +56,27 @@ model = databricks.automl.classify(features,
 
 # COMMAND ----------
 
-# DBTITLE 1,Register the Best Run
 import mlflow
 from mlflow.tracking.client import MlflowClient
 
 client = MlflowClient()
-run_id = model.best_trial.mlflow_run_id
+
+df = mlflow.search_runs(
+  experiment_ids = ['3804581652095129'], # HERE PLACE YOUR EXPERIMENT FROM AUTOML RUN
+  filter_string = "status = 'FINISHED'"
+)
+
+best_run_id = df.sort_values("metrics.test_log_loss")["run_id"].values[0]
+best_run_id
+
+# COMMAND ----------
+
+df.head()
+
+# COMMAND ----------
+
+# DBTITLE 1,Register the Best Run
+run_id = best_run_id
 model_uri = f"runs:/{run_id}/model"
 client.set_tag(run_id, key='db_table', value=f'{db_name}.{fs_table_name}')
 
