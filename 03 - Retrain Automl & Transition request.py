@@ -21,7 +21,7 @@ dbutils.widgets.removeAll()
 dbutils.widgets.text("feature_table_name", "telco_churn_features_ft", "Feature Table name")
 dbutils.widgets.text("model_name", "telco_churn_ft", "Model Name to be register")
 dbutils.widgets.text("db_prefix", "churn_mlops", "Database Prefix")
-dbutils.widgets.text("user_name", "PLACE HERE YOUR USER NAME", "User Name")
+dbutils.widgets.text("user_name", "anastasia_prokaieva", "User Name")
 dbutils.widgets.text("table_name", "telco_churn_ft", "Delta Table Name")
 
 # COMMAND ----------
